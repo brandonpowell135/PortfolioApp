@@ -25,7 +25,7 @@ def calculate_stock_data(tickers, start_date, end_date):
     return combined_data
 
 # Function to simulate portfolio return
-def simulate_profile_return(combined_data, tickers, weekly_investment, stock_allocation):
+def simulate_profile_return(combined_data, tickers, weekly_investment, allocation):
     for ticker in tickers:
         if f"{ticker} Daily Return" not in combined_data:
             continue  # Skip tickers with missing data
@@ -37,7 +37,7 @@ def simulate_profile_return(combined_data, tickers, weekly_investment, stock_all
         for i in range(len(combined_data)):
             # Weekly investments are added every Monday
             if combined_data.index[i].weekday() == 0:  # Monday
-                portfolio_stock_return += weekly_investment * stock_allocation
+                portfolio_stock_return += weekly_investment * allocation
 
             # Apply daily returns
             if i > 0:  
@@ -56,17 +56,34 @@ def simulate_profile_return(combined_data, tickers, weekly_investment, stock_all
 # Get user input for tickers (up to 10)
 tickers_input = input("Enter up to 10 stock tickers, separated by spaces: ")
 tickers = tickers_input.upper().split()[:10]  # Convert to uppercase and limit to 10 tickers
-
 # Ensure at least one ticker is entered
 if not tickers:
     print("No tickers entered. Exiting...")
     exit()
 
+allocation_input = input("Enter the allocation for each stock, separated by spaces: ")
+allocation = allocation_input.split()[:10]  # Convert to uppercase and limit to 10 tickers
+try:
+    allocation = [float(x) for x in allocation]
+    print(f"{allocation}")
+except ValueError:
+    print("Invalid input! Please enter numbers only.")
+    exit()
+allocation_total = sum(allocation)
+if allocation_total > 100:
+    print("Allocation is greater than 100%")
+    exit()
+elif allocation_total < 100:
+    print("Allocation is less than 100%")
+    exit()
+
+
+
 # Specify the time range
 start_date = "2020-01-01"
 end_date = "2020-12-01"
 weekly_investment = 100
-stock_allocation = 0.7
+#stock_allocation = 0.7
 
 # Calculate stock data
 stock_data = calculate_stock_data(tickers=tickers, start_date=start_date, end_date=end_date)
@@ -77,7 +94,7 @@ if stock_data.empty:
     exit()
 
 # Simulate portfolio returns
-upro_data = simulate_profile_return(stock_data, tickers, weekly_investment, stock_allocation)
+upro_data = simulate_profile_return(stock_data, tickers, weekly_investment, allocation)
 
 # Save to CSV
 stock_data.to_csv("Portfolio.csv")
