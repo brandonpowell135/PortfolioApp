@@ -26,6 +26,9 @@ def calculate_stock_data(tickers, start_date, end_date):
 
 # Function to simulate portfolio return
 def simulate_profile_return(combined_data, tickers, weekly_investment, allocation):
+    print(type(allocation))
+    print(f"{allocation}")
+    print(f"{tickers}")
     for ticker in tickers:
         if f"{ticker} Daily Return" not in combined_data:
             continue  # Skip tickers with missing data
@@ -33,11 +36,14 @@ def simulate_profile_return(combined_data, tickers, weekly_investment, allocatio
         portfolio_stock_return = 0
         portfolio_stock_value = []
 
+        # Get the corresponding allocation for the stock ticker
+        ticker_allocation = allocation[tickers.index(ticker)]
+
         # Loop through each day in the dataset
         for i in range(len(combined_data)):
             # Weekly investments are added every Monday
             if combined_data.index[i].weekday() == 0:  # Monday
-                portfolio_stock_return += weekly_investment * allocation
+                portfolio_stock_return += weekly_investment * ticker_allocation
 
             # Apply daily returns
             if i > 0:  
@@ -65,15 +71,17 @@ allocation_input = input("Enter the allocation for each stock, separated by spac
 allocation = allocation_input.split()[:10]  # Convert to uppercase and limit to 10 tickers
 try:
     allocation = [float(x) for x in allocation]
+    allocation = [value / 100 for value in allocation]
     print(f"{allocation}")
+
 except ValueError:
     print("Invalid input! Please enter numbers only.")
     exit()
 allocation_total = sum(allocation)
-if allocation_total > 100:
+if allocation_total > 1:
     print("Allocation is greater than 100%")
     exit()
-elif allocation_total < 100:
+elif allocation_total < 1:
     print("Allocation is less than 100%")
     exit()
 
@@ -83,7 +91,11 @@ elif allocation_total < 100:
 start_date = "2020-01-01"
 end_date = "2020-12-01"
 weekly_investment = 100
-#stock_allocation = 0.7
+stock_allocation = 0.7
+print(type(stock_allocation))
+print(type(allocation))
+print(type(tickers))
+
 
 # Calculate stock data
 stock_data = calculate_stock_data(tickers=tickers, start_date=start_date, end_date=end_date)
