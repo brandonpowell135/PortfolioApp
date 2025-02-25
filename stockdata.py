@@ -26,9 +26,6 @@ def calculate_stock_data(tickers, start_date, end_date):
 
 # Function to simulate portfolio return
 def simulate_profile_return(combined_data, tickers, weekly_investment, allocation):
-    print(type(allocation))
-    print(f"{allocation}")
-    print(f"{tickers}")
     for ticker in tickers:
         if f"{ticker} Daily Return" not in combined_data:
             continue  # Skip tickers with missing data
@@ -72,7 +69,6 @@ allocation = allocation_input.split()[:10]  # Convert to uppercase and limit to 
 try:
     allocation = [float(x) for x in allocation]
     allocation = [value / 100 for value in allocation]
-    print(f"{allocation}")
 
 except ValueError:
     print("Invalid input! Please enter numbers only.")
@@ -92,10 +88,6 @@ start_date = "2020-01-01"
 end_date = "2020-12-01"
 weekly_investment = 100
 stock_allocation = 0.7
-print(type(stock_allocation))
-print(type(allocation))
-print(type(tickers))
-
 
 # Calculate stock data
 stock_data = calculate_stock_data(tickers=tickers, start_date=start_date, end_date=end_date)
