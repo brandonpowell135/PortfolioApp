@@ -54,6 +54,9 @@ def simulate_profile_return(combined_data, tickers, weekly_investment, allocatio
     # Add cumulative contributions
     combined_data["Contributions"] = (combined_data.index.weekday == 0).cumsum() * weekly_investment
 
+        # Add profile portfolio value (sum of all stock portfolio values)
+    combined_data["Profile Portfolio Value"] = combined_data[[f"{ticker} Portfolio Value" for ticker in tickers]].sum(axis=1)
+
     return combined_data
 
 # Get user input for tickers (up to 10)
@@ -98,7 +101,7 @@ if stock_data.empty:
     exit()
 
 # Simulate portfolio returns
-upro_data = simulate_profile_return(stock_data, tickers, weekly_investment, allocation)
+simulate_profile_return(stock_data, tickers, weekly_investment, allocation)
 
 # Save to CSV
 stock_data.to_csv("Portfolio.csv")
