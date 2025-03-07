@@ -25,38 +25,50 @@ def calculate_stock_data(tickers, start_date, end_date):
     return combined_data
 
 # Function to simulate portfolio return
-def simulate_profile_return(combined_data, tickers, weekly_investment, allocation):
+def simulate_profile_return(combined_data, tickers, weekly_investment, allocation, rebalance=30):
+    portfolio_stock_value = {ticker: [] for ticker in tickers}
+    portfolio_value = []
+    portfolio_stock_return = {ticker: 0 for ticker in tickers}  # Initial returns
+
+    # Get the corresponding allocation for the stock ticker
+    ticker_allocation = {tickers[i]: allocation[i] for i in range(len(tickers))}
+
+    # Loop through each day in the dataset
+    for i in range(len(combined_data)):
+        # Weekly investments are added every Monday
+        if combined_data.index[i].weekday() == 0:  # Monday
+            for ticker in tickers:
+                portfolio_stock_return[ticker] += weekly_investment * ticker_allocation[ticker]
+
+        # Apply daily returns for each stock
+        for ticker in tickers:
+            if i > 0:
+                portfolio_stock_return[ticker] *= (1 + combined_data[f"{ticker} Daily Return"].iloc[i])
+
+        # Rebalance each stock holdings at the specified interval (e.g., every 30 days)
+        if i % rebalance == 0 and i > 0:  # Avoid rebalancing on the first day
+            total_portfolio_value = sum(portfolio_stock_return[ticker] for ticker in tickers)
+            for ticker in tickers:
+                target_value = total_portfolio_value * ticker_allocation[ticker]
+                portfolio_stock_return[ticker] = target_value
+
+        # Store portfolio value
+        total_portfolio_value = sum(portfolio_stock_return[ticker] for ticker in tickers)
+        portfolio_value.append(total_portfolio_value)
+
+        # Store individual stock values for later analysis
+        for ticker in tickers:
+            portfolio_stock_value[ticker].append(portfolio_stock_return[ticker])
+
+    # Store portfolio value and individual stock values in the combined data
     for ticker in tickers:
-        if f"{ticker} Daily Return" not in combined_data:
-            continue  # Skip tickers with missing data
+        combined_data[f"{ticker} Portfolio Value"] = portfolio_stock_value[ticker]
 
-        portfolio_stock_return = 0
-        portfolio_stock_value = []
-
-        # Get the corresponding allocation for the stock ticker
-        ticker_allocation = allocation[tickers.index(ticker)]
-
-        # Loop through each day in the dataset
-        for i in range(len(combined_data)):
-            # Weekly investments are added every Monday
-            if combined_data.index[i].weekday() == 0:  # Monday
-                portfolio_stock_return += weekly_investment * ticker_allocation
-
-            # Apply daily returns
-            if i > 0:  
-                portfolio_stock_return *= (1 + combined_data[f"{ticker} Daily Return"].iloc[i])
-
-            # Store portfolio value
-            portfolio_stock_value.append(portfolio_stock_return)
-
-        combined_data[f"{ticker} Portfolio Value"] = portfolio_stock_value
-
+    # Add profile portfolio value (sum of all stock portfolio values)
+    combined_data["Profile Portfolio Value"] = portfolio_value
     # Add cumulative contributions
     combined_data["Contributions"] = (combined_data.index.weekday == 0).cumsum() * weekly_investment
-
-        # Add profile portfolio value (sum of all stock portfolio values)
-    combined_data["Profile Portfolio Value"] = combined_data[[f"{ticker} Portfolio Value" for ticker in tickers]].sum(axis=1)
-
+    
     return combined_data
 
 # Get user input for tickers (up to 10)
@@ -76,6 +88,7 @@ try:
 except ValueError:
     print("Invalid input! Please enter numbers only.")
     exit()
+
 allocation_total = sum(allocation)
 if allocation_total > 1:
     print("Allocation is greater than 100%")
@@ -84,13 +97,10 @@ elif allocation_total < 1:
     print("Allocation is less than 100%")
     exit()
 
-
-
 # Specify the time range
 start_date = "2020-01-01"
 end_date = "2020-12-01"
 weekly_investment = 100
-stock_allocation = 0.7
 
 # Calculate stock data
 stock_data = calculate_stock_data(tickers=tickers, start_date=start_date, end_date=end_date)
@@ -101,7 +111,7 @@ if stock_data.empty:
     exit()
 
 # Simulate portfolio returns
-simulate_profile_return(stock_data, tickers, weekly_investment, allocation)
+stock_data = simulate_profile_return(stock_data, tickers, weekly_investment, allocation)
 
 # Save to CSV
 stock_data.to_csv("Portfolio.csv")
