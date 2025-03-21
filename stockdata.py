@@ -1,6 +1,7 @@
 import yfinance as yf
 import pandas as pd
 
+
 # Function to calculate daily returns and cumulative returns for multiple stocks
 def calculate_stock_data(tickers, start_date, end_date):
     combined_data = pd.DataFrame()  # Create an empty DataFrame to store results
@@ -25,7 +26,7 @@ def calculate_stock_data(tickers, start_date, end_date):
     return combined_data
 
 # Function to simulate portfolio return
-def simulate_profile_return(combined_data, tickers, weekly_investment, allocation, rebalance=30):
+def simulate_holdings_return(combined_data, tickers, weekly_investment, allocation, rebalance=30):
     portfolio_stock_value = {ticker: [] for ticker in tickers}
     portfolio_value = []
     portfolio_stock_return = {ticker: 0 for ticker in tickers}  # Initial returns
@@ -68,8 +69,35 @@ def simulate_profile_return(combined_data, tickers, weekly_investment, allocatio
     combined_data["Profile Portfolio Value"] = portfolio_value
     # Add cumulative contributions
     combined_data["Contributions"] = (combined_data.index.weekday == 0).cumsum() * weekly_investment
-    
+
     return combined_data
+
+def max_drawdown_calc(combined_data):
+    
+    profile_high = []
+    counter_max = []
+    profile_max = combined_data['Profile Portfolio Value'].iloc[0]
+    drawdown_counter = 0
+
+    for i in range(len(combined_data)):
+
+
+        if combined_data['Profile Portfolio Value'].iloc[i] >= profile_max:
+            profile_max = combined_data['Profile Portfolio Value'].iloc[i]
+            drawdown_counter = 1
+        else:
+            drawdown_counter  += 1
+
+        profile_high.append(profile_max)
+        counter_max.append(drawdown_counter)
+
+    combined_data["Profile High"] = profile_high
+    combined_data["Down Days"] = counter_max
+
+
+    return combined_data
+
+
 
 # Get user input for tickers (up to 10)
 tickers_input = input("Enter up to 10 stock tickers, separated by spaces: ")
@@ -111,7 +139,9 @@ if stock_data.empty:
     exit()
 
 # Simulate portfolio returns
-stock_data = simulate_profile_return(stock_data, tickers, weekly_investment, allocation)
+stock_data = simulate_holdings_return(stock_data, tickers, weekly_investment, allocation)
+
+stock_data = max_drawdown_calc(stock_data)
 
 # Save to CSV
 stock_data.to_csv("Portfolio.csv")
