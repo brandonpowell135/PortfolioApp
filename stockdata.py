@@ -81,7 +81,6 @@ def max_drawdown_calc(combined_data):
 
     for i in range(len(combined_data)):
 
-
         if combined_data['Profile Portfolio Value'].iloc[i] >= profile_max:
             profile_max = combined_data['Profile Portfolio Value'].iloc[i]
             drawdown_counter = 1
@@ -98,51 +97,69 @@ def max_drawdown_calc(combined_data):
     return combined_data
 
 
+def profile_input():
 
-# Get user input for tickers (up to 10)
-tickers_input = input("Enter up to 10 stock tickers, separated by spaces: ")
-tickers = tickers_input.upper().split()[:10]  # Convert to uppercase and limit to 10 tickers
-# Ensure at least one ticker is entered
-if not tickers:
-    print("No tickers entered. Exiting...")
-    exit()
+    # Get user input for tickers (up to 10)
+    tickers_input = input("Enter up to 10 stock tickers, separated by spaces: ")
+    tickers = tickers_input.upper().split()[:10]  # Convert to uppercase and limit to 10 tickers
+    # Ensure at least one ticker is entered
+    if not tickers:
+        print("No tickers entered. Exiting...")
+        exit()
 
-allocation_input = input("Enter the allocation for each stock, separated by spaces: ")
-allocation = allocation_input.split()[:10]  # Convert to uppercase and limit to 10 tickers
-try:
-    allocation = [float(x) for x in allocation]
-    allocation = [value / 100 for value in allocation]
+    allocation_input = input("Enter the allocation for each stock, separated by spaces: ")
+    allocation = allocation_input.split()[:10]  # Convert to uppercase and limit to 10 tickers
+    try:
+        allocation = [float(x) for x in allocation]
+        allocation = [value / 100 for value in allocation]
 
-except ValueError:
-    print("Invalid input! Please enter numbers only.")
-    exit()
+    except ValueError:
+        print("Invalid input! Please enter numbers only.")
+        exit()
 
-allocation_total = sum(allocation)
-if allocation_total > 1:
-    print("Allocation is greater than 100%")
-    exit()
-elif allocation_total < 1:
-    print("Allocation is less than 100%")
-    exit()
+    allocation_total = sum(allocation)
+    if allocation_total > 1:
+        print("Allocation is greater than 100%")
+        exit()
+    elif allocation_total < 1:
+        print("Allocation is less than 100%")
+        exit()
+
+    return tickers, allocation
+
+
 
 # Specify the time range
 start_date = "2020-01-01"
 end_date = "2020-12-01"
 weekly_investment = 100
 
-# Calculate stock data
-stock_data = calculate_stock_data(tickers=tickers, start_date=start_date, end_date=end_date)
-
-# Ensure stock_data is not empty before proceeding
-if stock_data.empty:
-    print("No valid stock data retrieved. Exiting...")
+profile_ammounts = input("How many Profiles would you like to create? [5 Max]: ")
+try:
+    val = int(profile_ammounts)
+except ValueError:
+    print("Invalid input! Please enter numbers only.")
     exit()
 
-# Simulate portfolio returns
-stock_data = simulate_holdings_return(stock_data, tickers, weekly_investment, allocation)
+for i in range(val):
 
-stock_data = max_drawdown_calc(stock_data)
+    #Profile results (ticker, allocation)
+    profile_results = profile_input()
+    # Calculate stock data
+    stock_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
 
-# Save to CSV
-stock_data.to_csv("Portfolio.csv")
-print("Portfolio data saved to Portfolio.csv")
+    # Ensure stock_data is not empty before proceeding
+    if stock_data.empty:
+        print("No valid stock data retrieved. Exiting...")
+        exit()
+
+
+    # Simulate portfolio returns
+    stock_data = simulate_holdings_return(combined_data=stock_data, tickers=profile_results[0], weekly_investment=weekly_investment, allocation=profile_results[1])
+    # Calculate max drawdowns
+    stock_data = max_drawdown_calc(combined_data=stock_data)
+
+    # Save to CSV
+    output_filename = f"Portfolio_{i+1}.csv"
+    stock_data.to_csv(output_filename)
+    print(f"Portfolio data for iteration {i+1} saved to {output_filename}")
