@@ -3,9 +3,9 @@
 stockdata.py
 todo:
 add cash account with contributions on drawdowns
-add max drawdowns with time to recover
 add leveraged amount to stock
-redo organization so that it adds a dataframe for rebalanced
+add unit tests
+be able to choose rebalance timing
 
 flask...
 fastapi...

@@ -4,3 +4,4 @@ python-dotenv
 pandas
 robin_stocks
 matplotlib
+flask

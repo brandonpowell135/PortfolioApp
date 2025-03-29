@@ -1,5 +1,7 @@
 import yfinance as yf
 import pandas as pd
+import matplotlib.pyplot as plt
+
 
 def calculate_stock_data(tickers, start_date, end_date):
     combined_data = pd.DataFrame()  
@@ -13,7 +15,7 @@ def calculate_stock_data(tickers, start_date, end_date):
 
         stock_data["Daily Return"] = stock_data["Close"].pct_change()
         combined_data[f"{ticker} Daily Return"] = stock_data["Daily Return"]
-        
+
         initial_value = 100
         combined_data[f"{ticker} Cumulative"] = (1 + combined_data[f"{ticker} Daily Return"]).cumprod() * initial_value
 
@@ -75,8 +77,6 @@ def max_drawdown_calc(combined_data):
         down_days.append(drawdown_counter)
 
     combined_data["Down Days"] = down_days
-
-
     return combined_data
 
 
@@ -124,6 +124,8 @@ except ValueError:
     print("Invalid input! Please enter numbers only.")
     exit()
 
+profile_values = []
+
 for i in range(val):
 
     #Profile results (ticker, allocation)
@@ -131,11 +133,9 @@ for i in range(val):
     # Calculate stock data
     stock_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
 
-    # Ensure stock_data is not empty before proceeding
     if stock_data.empty:
         print("No valid stock data retrieved. Exiting...")
         exit()
-
 
     # Simulate portfolio returns
     stock_data = simulate_holdings_return(combined_data=stock_data, tickers=profile_results[0], weekly_investment=weekly_investment, allocation=profile_results[1])
@@ -146,3 +146,25 @@ for i in range(val):
     output_filename = f"Portfolio_{i+1}.csv"
     stock_data.to_csv(output_filename)
     print(f"Portfolio data for iteration {i+1} saved to {output_filename}")
+
+    # Append the Profile Portfolio Value for this iteration
+    profile_values.append(stock_data['Profile Portfolio Value'])
+    
+# Plotting Profile Portfolio Values for each iteration
+plt.figure(figsize=(10, 6))
+
+# Plot each profile portfolio value
+for i in range(val):
+    plt.plot(profile_values[i], label=f"Portfolio {i+1}")
+
+# Customize the plot
+plt.xlabel('Date')
+plt.ylabel('Profile Portfolio Value')
+plt.title('Profile Portfolio Values for Each Profile')
+plt.legend()  # Show a legend for each profile
+plt.grid(True)  # Show grid lines for better readability
+plt.show()
+
+# Save the plot as an image file (PNG format)
+output_filename = "portfolio_values_plot.png"
+plt.savefig(output_filename)
