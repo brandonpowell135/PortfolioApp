@@ -2,6 +2,8 @@
 
 stockdata.py
 todo:
+add following output:
+    upro mimic
 add cash account with contributions on drawdowns
 add leveraged amount to stock
 add unit tests

@@ -21,42 +21,54 @@ def calculate_stock_data(tickers, start_date, end_date):
 
     return combined_data
 
-def simulate_holdings_return(combined_data, tickers, weekly_investment, allocation, rebalance=30):
+def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_investment, allocation, rebalance):
+
     portfolio_stock_value = {ticker: [] for ticker in tickers}
     portfolio_value = []
-    portfolio_stock_return = {ticker: 0 for ticker in tickers} 
+    total_contributions = []
+    new_contributions = initial_investment  # Start with initial investment
+    total_portfolio_value = initial_investment
 
-    ticker_allocation = {tickers[i]: allocation[i] for i in range(len(tickers))}
+    # Initialize portfolio stock return with initial allocation
+    portfolio_stock_return = {ticker: initial_investment * allocation[i] for i, ticker in enumerate(tickers)}
 
     for i in range(len(combined_data)):
-
-        if combined_data.index[i].weekday() == 0:  # Monday
+        # Detect start of a new week (avoiding missing Mondays)
+        if i > 0 and combined_data.index[i].isocalendar()[1] != combined_data.index[i - 1].isocalendar()[1]:
+            new_contributions += weekly_investment  # Add weekly investment
             for ticker in tickers:
-                portfolio_stock_return[ticker] += weekly_investment * ticker_allocation[ticker]
+                portfolio_stock_return[ticker] += weekly_investment * allocation[tickers.index(ticker)]
 
+        # Apply daily returns
         for ticker in tickers:
             if i > 0:
                 portfolio_stock_return[ticker] *= (1 + combined_data[f"{ticker} Daily Return"].iloc[i])
 
-        if i % rebalance == 0 and i > 0:  # Avoid rebalancing on the first day
-            total_portfolio_value = sum(portfolio_stock_return[ticker] for ticker in tickers)
+        # Rebalancing logic
+        if i % rebalance == 0 and i > 0:
+            total_portfolio_value = sum(portfolio_stock_return.values())
             for ticker in tickers:
-                target_value = total_portfolio_value * ticker_allocation[ticker]
+                target_value = total_portfolio_value * allocation[tickers.index(ticker)]
                 portfolio_stock_return[ticker] = target_value
 
-        total_portfolio_value = sum(portfolio_stock_return[ticker] for ticker in tickers)
+        # Track portfolio values
+        total_portfolio_value = sum(portfolio_stock_return.values())
+        
         portfolio_value.append(total_portfolio_value)
+        total_contributions.append(new_contributions)
 
         for ticker in tickers:
             portfolio_stock_value[ticker].append(portfolio_stock_return[ticker])
 
+    # Store values in DataFrame
     for ticker in tickers:
         combined_data[f"{ticker} Portfolio Value"] = portfolio_stock_value[ticker]
 
     combined_data["Profile Portfolio Value"] = portfolio_value
-    combined_data["Contributions"] = (combined_data.index.weekday == 0).cumsum() * weekly_investment
+    combined_data["Contributions"] = total_contributions
 
     return combined_data
+
 
 def max_drawdown_calc(combined_data):
 
@@ -64,12 +76,12 @@ def max_drawdown_calc(combined_data):
     combined_data["Profile Portfolio Return"] = profile_return
 
     down_days = []
-    return_max = 0
+    return_amount = 0
     drawdown_counter = 0
 
     for i in range(len(combined_data)):
-        if  combined_data["Profile Portfolio Return"].iloc[i] >= return_max:
-            return_max = combined_data["Profile Portfolio Return"].iloc[i]
+        if  combined_data["Profile Portfolio Return"].iloc[i] >= return_amount:
+            return_amount = combined_data["Profile Portfolio Return"].iloc[i]
             drawdown_counter = 0
         else:
             drawdown_counter  += 1
@@ -78,7 +90,6 @@ def max_drawdown_calc(combined_data):
 
     combined_data["Down Days"] = down_days
     return combined_data
-
 
 def profile_input():
 
@@ -110,14 +121,51 @@ def profile_input():
 
     return tickers, allocation
 
+def save_to_csv(combined_data, iteration):
+    output_filename = f"Portfolio_{iteration+1}.csv"
+    combined_data.to_csv(output_filename)
+    print(f"Portfolio data for iteration {iteration+1} saved to {output_filename}")
 
+def plot_results(profile_values, portfolio_stats, val):
+    plt.figure(figsize=(11, 7)) #Width, Height
+
+    # Plot each profile portfolio value
+    for i in range(val):
+        plt.plot(profile_values[i], label=f"Portfolio {i+1}")
+
+    table_data = pd.DataFrame(portfolio_stats)
+
+    column_labels = [f"Portfolio #", "Max Drawdown", "Drawdown Time", "Total Return"]
+    # Add the table below the plot                                                                         bbox = [left, bottom, width, height]
+    table = plt.table(cellText=table_data.values, colLabels=column_labels, cellLoc='center', loc='bottom', bbox=[0, -0.3, 1, 0.2])
+
+    plt.plot(combined_data.index, 
+    combined_data["Contributions"], 
+    label="Contributions", 
+    color="purple")
+
+    # Customize the plot
+    plt.xlabel('Date')
+    plt.ylabel('Profile Portfolio Value')
+    plt.title('Profile Portfolio Values for Each Profile')
+    plt.legend()  # Show a legend for each profile
+    plt.grid(True)  # Show grid lines for better readability
+    plt.tight_layout()# Adjust layout to reserve 20% space at the bottom for the table
+    plt.show()
+
+    # Save the plot as an image file (PNG format)
+    output_filename = "portfolio_values_plot.png"
+    plt.savefig(output_filename)
 
 # Specify the time range
 start_date = "2020-01-01"
 end_date = "2020-12-31"
 weekly_investment = 100
+initial_investment = 0
+rebalance = 30
+profile_ammounts = input("How many Profiles would you like to create? [ 5 Max ]: ")
 
-profile_ammounts = input("How many Profiles would you like to create? [5 Max]: ")
+
 try:
     val = int(profile_ammounts)
 except ValueError:
@@ -125,46 +173,35 @@ except ValueError:
     exit()
 
 profile_values = []
+portfolio_stats = []
 
 for i in range(val):
 
     #Profile results (ticker, allocation)
     profile_results = profile_input()
     # Calculate stock data
-    stock_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
+    combined_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
 
-    if stock_data.empty:
+    if combined_data.empty:
         print("No valid stock data retrieved. Exiting...")
         exit()
 
-    # Simulate portfolio returns
-    stock_data = simulate_holdings_return(combined_data=stock_data, tickers=profile_results[0], weekly_investment=weekly_investment, allocation=profile_results[1])
-    # Calculate max drawdowns
-    stock_data = max_drawdown_calc(combined_data=stock_data)
+    # Functions
+    combined_data = simulate_holdings_return(combined_data=combined_data, tickers=profile_results[0], initial_investment = initial_investment, weekly_investment=weekly_investment, allocation=profile_results[1], rebalance=rebalance)
+    combined_data = max_drawdown_calc(combined_data=combined_data)
+    save_to_csv(combined_data, i)
 
-    # Save to CSV
-    output_filename = f"Portfolio_{i+1}.csv"
-    stock_data.to_csv(output_filename)
-    print(f"Portfolio data for iteration {i+1} saved to {output_filename}")
+    # Data for plot
+    profile_values.append(combined_data['Profile Portfolio Value'])
 
-    # Append the Profile Portfolio Value for this iteration
-    profile_values.append(stock_data['Profile Portfolio Value'])
-    
-# Plotting Profile Portfolio Values for each iteration
-plt.figure(figsize=(10, 6))
+    # Data for table
+    max_drawdown_idx = combined_data["Profile Portfolio Return"].idxmin()
+    contribution_at_max_drawdown = combined_data["Contributions"].loc[max_drawdown_idx]
+    max_drawdown = (combined_data["Profile Portfolio Return"].min() / contribution_at_max_drawdown) * 100
+    max_drawdown_duration = combined_data["Down Days"].max()
+    total_return = (combined_data["Profile Portfolio Return"].iloc[-1] / combined_data["Contributions"].iloc[-1]) *100
 
-# Plot each profile portfolio value
-for i in range(val):
-    plt.plot(profile_values[i], label=f"Portfolio {i+1}")
+    portfolio_stats.append([f"Portfolio {i+1}", f"{max_drawdown:,.2f}%", f"{max_drawdown_duration} days", f"{total_return:,.2f}%"])
 
-# Customize the plot
-plt.xlabel('Date')
-plt.ylabel('Profile Portfolio Value')
-plt.title('Profile Portfolio Values for Each Profile')
-plt.legend()  # Show a legend for each profile
-plt.grid(True)  # Show grid lines for better readability
-plt.show()
+plot_results(profile_values, portfolio_stats, val)
 
-# Save the plot as an image file (PNG format)
-output_filename = "portfolio_values_plot.png"
-plt.savefig(output_filename)
