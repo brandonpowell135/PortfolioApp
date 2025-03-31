@@ -29,15 +29,21 @@ def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_
     new_contributions = initial_investment  # Start with initial investment
     total_portfolio_value = initial_investment
 
-    # Initialize portfolio stock return with initial allocation
+    # Allocate initial investment based on allocation
     portfolio_stock_return = {ticker: initial_investment * allocation[i] for i, ticker in enumerate(tickers)}
 
+    # Ensure first week's investment is added
+    last_week = combined_data.index[0].isocalendar()[1]  # Get week number of first data point
+
     for i in range(len(combined_data)):
-        # Detect start of a new week (avoiding missing Mondays)
-        if i > 0 and combined_data.index[i].isocalendar()[1] != combined_data.index[i - 1].isocalendar()[1]:
+        current_week = combined_data.index[i].isocalendar()[1]  # Get week number
+
+        # Detect new week (including first entry)
+        if i == 0 or current_week != last_week:
             new_contributions += weekly_investment  # Add weekly investment
             for ticker in tickers:
                 portfolio_stock_return[ticker] += weekly_investment * allocation[tickers.index(ticker)]
+            last_week = current_week  # Update last processed week
 
         # Apply daily returns
         for ticker in tickers:
@@ -53,7 +59,6 @@ def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_
 
         # Track portfolio values
         total_portfolio_value = sum(portfolio_stock_return.values())
-        
         portfolio_value.append(total_portfolio_value)
         total_contributions.append(new_contributions)
 
@@ -69,26 +74,37 @@ def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_
 
     return combined_data
 
-
 def max_drawdown_calc(combined_data):
 
     profile_return = combined_data['Profile Portfolio Value'] - combined_data['Contributions']
     combined_data["Profile Portfolio Return"] = profile_return
 
-    down_days = []
-    return_amount = 0
+    peak_return = profile_return.iloc[0]  # Start with the first value as the peak
+    peak_value = combined_data["Profile Portfolio Return"].iloc[0]
+    drawdowns = []  # Store drawdown values
+    down_days = []  # Store consecutive down days
     drawdown_counter = 0
 
     for i in range(len(combined_data)):
-        if  combined_data["Profile Portfolio Return"].iloc[i] >= return_amount:
-            return_amount = combined_data["Profile Portfolio Return"].iloc[i]
-            drawdown_counter = 0
-        else:
-            drawdown_counter  += 1
+        current_value = profile_return.iloc[i]
 
+        if current_value > peak_return:
+            peak_return = current_value  # Update peak if a new high is reached
+            peak_value = combined_data["Profile Portfolio Value"].iloc[i]
+
+            drawdown_counter = 0  # Reset down days counter
+        else:
+            drawdown_counter += 1  # Count consecutive down days
+        
+        # Calculate drawdown as a percentage
+        drawdown = (peak_return - current_value) / peak_value if peak_return != 0 else 0
+        drawdowns.append(drawdown)
         down_days.append(drawdown_counter)
 
+    combined_data["Max Drawdown"] = drawdowns
+
     combined_data["Down Days"] = down_days
+
     return combined_data
 
 def profile_input():
@@ -158,10 +174,10 @@ def plot_results(profile_values, portfolio_stats, val):
     plt.savefig(output_filename)
 
 # Specify the time range
-start_date = "2020-01-01"
-end_date = "2020-12-31"
+start_date = "2010-01-01"
+end_date = "2024-12-31"
 weekly_investment = 100
-initial_investment = 0
+initial_investment = 1000
 rebalance = 30
 profile_ammounts = input("How many Profiles would you like to create? [ 5 Max ]: ")
 
@@ -195,13 +211,12 @@ for i in range(val):
     profile_values.append(combined_data['Profile Portfolio Value'])
 
     # Data for table
-    max_drawdown_idx = combined_data["Profile Portfolio Return"].idxmin()
-    contribution_at_max_drawdown = combined_data["Contributions"].loc[max_drawdown_idx]
-    max_drawdown = (combined_data["Profile Portfolio Return"].min() / contribution_at_max_drawdown) * 100
+    max_drawdown = combined_data["Max Drawdown"].max() * 100
     max_drawdown_duration = combined_data["Down Days"].max()
     total_return = (combined_data["Profile Portfolio Return"].iloc[-1] / combined_data["Contributions"].iloc[-1]) *100
 
     portfolio_stats.append([f"Portfolio {i+1}", f"{max_drawdown:,.2f}%", f"{max_drawdown_duration} days", f"{total_return:,.2f}%"])
+
 
 plot_results(profile_values, portfolio_stats, val)
 
