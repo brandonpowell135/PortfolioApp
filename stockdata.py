@@ -151,7 +151,7 @@ def plot_results(profile_values, portfolio_stats, val):
 
     table_data = pd.DataFrame(portfolio_stats)
 
-    column_labels = [f"Portfolio #", "Max Drawdown", "Drawdown Time", "Total Return"]
+    column_labels = [f"Portfolio #", "Max Drawdown", "Longest Drawdown Duration", "Total Return", "End Value"]
     # Add the table below the plot                                                                         bbox = [left, bottom, width, height]
     table = plt.table(cellText=table_data.values, colLabels=column_labels, cellLoc='center', loc='bottom', bbox=[0, -0.3, 1, 0.2])
 
@@ -175,9 +175,9 @@ def plot_results(profile_values, portfolio_stats, val):
 
 # Specify the time range
 start_date = "2010-01-01"
-end_date = "2024-12-31"
-weekly_investment = 100
-initial_investment = 1000
+end_date = "2020-03-31"
+weekly_investment = 400
+initial_investment = 20000
 rebalance = 30
 profile_ammounts = input("How many Profiles would you like to create? [ 5 Max ]: ")
 
@@ -214,8 +214,14 @@ for i in range(val):
     max_drawdown = combined_data["Max Drawdown"].max() * 100
     max_drawdown_duration = combined_data["Down Days"].max()
     total_return = (combined_data["Profile Portfolio Return"].iloc[-1] / combined_data["Contributions"].iloc[-1]) *100
+    end_value = combined_data["Profile Portfolio Value"].iloc[-1]
 
-    portfolio_stats.append([f"Portfolio {i+1}", f"{max_drawdown:,.2f}%", f"{max_drawdown_duration} days", f"{total_return:,.2f}%"])
+    portfolio_stats.append([
+        f"Portfolio {i+1}", 
+        f"{max_drawdown:,.2f}%", 
+        f"{max_drawdown_duration} days", 
+        f"{total_return:,.2f}%", 
+        f"${round(end_value):,}"])
 
 
 plot_results(profile_values, portfolio_stats, val)
