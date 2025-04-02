@@ -6,18 +6,23 @@ import matplotlib.pyplot as plt
 def calculate_stock_data(tickers, start_date, end_date):
     combined_data = pd.DataFrame()  
 
-    for ticker in tickers:
-
-        stock_data = yf.download(ticker, start=start_date, end=end_date)
-        if stock_data.empty:
-            print(f"Warning: No data found for {ticker}. Skipping...")
-            continue  
-
+    if "UPRO_MIMIC" in tickers:
+        stock_data = yf.download("^GSPC", start=start_date, end=end_date)
         stock_data["Daily Return"] = stock_data["Close"].pct_change()
-        combined_data[f"{ticker} Daily Return"] = stock_data["Daily Return"]
+        combined_data["UPRO_MIMIC Daily Return"] = (stock_data["Daily Return"] * 3) + 0.00010
+        combined_data["UPRO_MIMIC Cumulative"] = (1 + combined_data["UPRO_MIMIC Daily Return"]).cumprod() * 100
 
-        initial_value = 100
-        combined_data[f"{ticker} Cumulative"] = (1 + combined_data[f"{ticker} Daily Return"]).cumprod() * initial_value
+    else:
+        for ticker in tickers:
+
+            stock_data = yf.download(ticker, start=start_date, end=end_date)
+            if stock_data.empty:
+                print(f"Warning: No data found for {ticker}. Skipping...")
+                continue  
+
+            stock_data["Daily Return"] = stock_data["Close"].pct_change()
+            combined_data[f"{ticker} Daily Return"] = stock_data["Daily Return"]
+            combined_data[f"{ticker} Cumulative"] = (1 + combined_data[f"{ticker} Daily Return"]).cumprod() * 100
 
     return combined_data
 
@@ -173,6 +178,7 @@ def plot_results(profile_values, portfolio_stats, val):
     output_filename = "portfolio_values_plot.png"
     plt.savefig(output_filename)
 
+
 # Specify the time range
 start_date = "2010-01-01"
 end_date = "2020-03-31"
@@ -183,9 +189,12 @@ profile_ammounts = input("How many Profiles would you like to create? [ 5 Max ]:
 
 
 try:
-    val = int(profile_ammounts)
+    val = int(profile_ammounts)  # Convert input to integer
+    if val < 1 or val > 5:  # Check if it's within the valid range
+        print("Please enter a number between 1 and 5.")
+        exit()
 except ValueError:
-    print("Invalid input! Please enter numbers only.")
+    print("Invalid input! Please enter a valid number.")
     exit()
 
 profile_values = []
