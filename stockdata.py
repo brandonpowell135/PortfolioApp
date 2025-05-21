@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 
 
 def calculate_stock_data(tickers, start_date, end_date):
-    combined_data = pd.DataFrame()  
+    combined_data = pd.DataFrame()
+    real_start_date = pd.Timestamp('1900-01-01')  
 
-    if "UPRO_MIMIC" in tickers:
+    if "UPROM" in tickers:
         stock_data = yf.download("^GSPC", start=start_date, end=end_date)
         stock_data["Daily Return"] = stock_data["Close"].pct_change()
         combined_data["UPRO_MIMIC Daily Return"] = (stock_data["Daily Return"] * 3) + 0.00010
@@ -23,6 +24,8 @@ def calculate_stock_data(tickers, start_date, end_date):
             stock_data["Daily Return"] = stock_data["Close"].pct_change()
             combined_data[f"{ticker} Daily Return"] = stock_data["Daily Return"]
             combined_data[f"{ticker} Cumulative"] = (1 + combined_data[f"{ticker} Daily Return"]).cumprod() * 100
+            real_start_date = max(real_start_date, stock_data.index[0])
+            combined_data = combined_data[combined_data.index >= real_start_date]
 
     return combined_data
 
@@ -107,9 +110,8 @@ def max_drawdown_calc(combined_data):
         down_days.append(drawdown_counter)
 
     combined_data["Max Drawdown"] = drawdowns
-
     combined_data["Down Days"] = down_days
-
+    
     return combined_data
 
 def profile_input():
@@ -180,10 +182,10 @@ def plot_results(profile_values, portfolio_stats, val):
 
 
 # Specify the time range
-start_date = "2010-01-01"
+start_date = "2000-01-01"
 end_date = "2020-03-31"
-weekly_investment = 400
-initial_investment = 20000
+weekly_investment = 100
+initial_investment = 0
 rebalance = 30
 profile_ammounts = input("How many Profiles would you like to create? [ 5 Max ]: ")
 
