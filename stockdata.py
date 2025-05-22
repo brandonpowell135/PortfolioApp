@@ -2,16 +2,20 @@ import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
 
+real_start_date = pd.Timestamp('1900-01-01')  
+
 
 def calculate_stock_data(tickers, start_date, end_date):
     combined_data = pd.DataFrame()
-    real_start_date = pd.Timestamp('1900-01-01')  
+    global real_start_date 
 
     if "UPROM" in tickers:
         stock_data = yf.download("^GSPC", start=start_date, end=end_date)
         stock_data["Daily Return"] = stock_data["Close"].pct_change()
-        combined_data["UPRO_MIMIC Daily Return"] = (stock_data["Daily Return"] * 3) + 0.00010
-        combined_data["UPRO_MIMIC Cumulative"] = (1 + combined_data["UPRO_MIMIC Daily Return"]).cumprod() * 100
+        real_start_date = max(real_start_date, stock_data.index[0])
+        combined_data["UPROM Daily Return"] = (stock_data["Daily Return"] * 3) + 0.00010
+        combined_data["UPROM Cumulative"] = (1 + combined_data["UPROM Daily Return"]).cumprod() * 100
+        combined_data = combined_data[combined_data.index >= real_start_date]
 
     else:
         for ticker in tickers:
@@ -28,6 +32,9 @@ def calculate_stock_data(tickers, start_date, end_date):
             combined_data = combined_data[combined_data.index >= real_start_date]
 
     return combined_data
+
+
+
 
 def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_investment, allocation, rebalance):
 
@@ -82,6 +89,9 @@ def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_
 
     return combined_data
 
+
+
+
 def max_drawdown_calc(combined_data):
 
     profile_return = combined_data['Profile Portfolio Value'] - combined_data['Contributions']
@@ -114,6 +124,9 @@ def max_drawdown_calc(combined_data):
     
     return combined_data
 
+
+
+
 def profile_input():
 
     # Get user input for tickers (up to 10)
@@ -126,6 +139,10 @@ def profile_input():
 
     allocation_input = input("Enter the allocation for each stock, separated by spaces: ")
     allocation = allocation_input.split()[:10]  # Convert to uppercase and limit to 10 tickers
+    if len(tickers) != len(allocation):
+        print("Mismatch: Number of allocations does not match number of tickers.")
+        exit()
+
     try:
         allocation = [float(x) for x in allocation]
         allocation = [value / 100 for value in allocation]
@@ -144,6 +161,20 @@ def profile_input():
 
     return tickers, allocation
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def save_to_csv(combined_data, iteration):
     output_filename = f"Portfolio_{iteration+1}.csv"
     combined_data.to_csv(output_filename)
@@ -158,7 +189,7 @@ def plot_results(profile_values, portfolio_stats, val):
 
     table_data = pd.DataFrame(portfolio_stats)
 
-    column_labels = [f"Portfolio #", "Max Drawdown", "Longest Drawdown Duration", "Total Return", "End Value"]
+    column_labels = [f"Portfolio #", "Max Drawdown", "Longest Drawdown Duration", "Total Return", "Total Contributions", "End Value"]
     # Add the table below the plot                                                                         bbox = [left, bottom, width, height]
     table = plt.table(cellText=table_data.values, colLabels=column_labels, cellLoc='center', loc='bottom', bbox=[0, -0.3, 1, 0.2])
 
@@ -208,13 +239,18 @@ for i in range(val):
     profile_results = profile_input()
     # Calculate stock data
     combined_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
-
     if combined_data.empty:
         print("No valid stock data retrieved. Exiting...")
         exit()
 
     # Functions
-    combined_data = simulate_holdings_return(combined_data=combined_data, tickers=profile_results[0], initial_investment = initial_investment, weekly_investment=weekly_investment, allocation=profile_results[1], rebalance=rebalance)
+    combined_data = simulate_holdings_return(combined_data=combined_data, 
+                                             tickers=profile_results[0], 
+                                             initial_investment = initial_investment, 
+                                             weekly_investment=weekly_investment, 
+                                             allocation=profile_results[1], 
+                                             rebalance=rebalance)
+                                             
     combined_data = max_drawdown_calc(combined_data=combined_data)
     save_to_csv(combined_data, i)
 
@@ -226,12 +262,14 @@ for i in range(val):
     max_drawdown_duration = combined_data["Down Days"].max()
     total_return = (combined_data["Profile Portfolio Return"].iloc[-1] / combined_data["Contributions"].iloc[-1]) *100
     end_value = combined_data["Profile Portfolio Value"].iloc[-1]
+    total_contributions = combined_data["Contributions"].iloc[-1]
 
     portfolio_stats.append([
         f"Portfolio {i+1}", 
         f"{max_drawdown:,.2f}%", 
         f"{max_drawdown_duration} days", 
-        f"{total_return:,.2f}%", 
+        f"{total_return:,.2f}%",
+        f"${total_contributions:,}", 
         f"${round(end_value):,}"])
 
 
