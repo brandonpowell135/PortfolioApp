@@ -232,37 +232,44 @@ except ValueError:
 
 profile_values = []
 portfolio_stats = []
+combined_data = []
+
 
 for i in range(val):
-
     #Profile results (ticker, allocation)
     profile_results = profile_input()
     # Calculate stock data
-    combined_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
-    if combined_data.empty:
+    stock_data = calculate_stock_data(tickers=profile_results[0], start_date=start_date, end_date=end_date)
+    if stock_data.empty:
         print("No valid stock data retrieved. Exiting...")
         exit()
 
-    # Functions
-    combined_data = simulate_holdings_return(combined_data=combined_data, 
-                                             tickers=profile_results[0], 
-                                             initial_investment = initial_investment, 
-                                             weekly_investment=weekly_investment, 
-                                             allocation=profile_results[1], 
-                                             rebalance=rebalance)
-                                             
-    combined_data = max_drawdown_calc(combined_data=combined_data)
-    save_to_csv(combined_data, i)
+
+    combined_data.append(stock_data)
+
+for i in range(val):
+    combined_data[i] = (combined_data[i][combined_data[i].index >= real_start_date])
+        # Functions
+    combined_data[i] = simulate_holdings_return(combined_data=combined_data[i], 
+                                            tickers=profile_results[0], 
+                                            initial_investment = initial_investment, 
+                                            weekly_investment=weekly_investment, 
+                                            allocation=profile_results[1], 
+                                            rebalance=rebalance)
+                                            
+    combined_data[i] = max_drawdown_calc(combined_data=combined_data[i])
+
+    save_to_csv(combined_data[i], i)
 
     # Data for plot
-    profile_values.append(combined_data['Profile Portfolio Value'])
+    profile_values.append(combined_data[i]['Profile Portfolio Value'])
 
     # Data for table
-    max_drawdown = combined_data["Max Drawdown"].max() * 100
-    max_drawdown_duration = combined_data["Down Days"].max()
-    total_return = (combined_data["Profile Portfolio Return"].iloc[-1] / combined_data["Contributions"].iloc[-1]) *100
-    end_value = combined_data["Profile Portfolio Value"].iloc[-1]
-    total_contributions = combined_data["Contributions"].iloc[-1]
+    max_drawdown = (combined_data[i]["Max Drawdown"].max() * 100)
+    max_drawdown_duration = (combined_data[i]["Down Days"].max())
+    total_return = (combined_data[i]["Profile Portfolio Return"].iloc[-1] / combined_data[i]["Contributions"].iloc[-1]) *100
+    end_value = (combined_data[i]["Profile Portfolio Value"].iloc[-1])
+    total_contributions = (combined_data[i]["Contributions"].iloc[-1])
 
     portfolio_stats.append([
         f"Portfolio {i+1}", 
