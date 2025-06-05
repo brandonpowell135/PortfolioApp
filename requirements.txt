@@ -1,7 +1,6 @@
-discord.py
 yfinance
 python-dotenv
 pandas
-robin_stocks
 matplotlib
 flask
+numpy

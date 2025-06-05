@@ -1,5 +1,6 @@
 import yfinance as yf
 import pandas as pd
+import numpy as np
 
 def retrieve_stock_data(tickers, start_date, end_date):
     combined_data = pd.DataFrame()
@@ -33,59 +34,32 @@ def retrieve_stock_data(tickers, start_date, end_date):
 
 
 
-def simulate_holdings_return(combined_data, tickers, initial_investment, weekly_investment, allocation, rebalance):
+def simulate_holdings_return(combined_data, profile_results, initial_investment, daily_investment):
 
-    portfolio_stock_value = {ticker: [] for ticker in tickers}
-    portfolio_value = []
-    total_contributions = []
-    new_contributions = initial_investment  # Start with initial investment
-    total_portfolio_value = initial_investment
 
-    # Allocate initial investment based on allocation
-    portfolio_stock_return = {ticker: initial_investment * allocation[i] for i, ticker in enumerate(tickers)}
+    if "Contributions" not in combined_data.columns:
+        combined_data["Contributions"] = 0.0  # initialize with zeros    
 
-    # Ensure first week's investment is added
-    last_week = combined_data.index[0].isocalendar()[1]  # Get week number of first data point
-
-    for i in range(len(combined_data)):
-        current_week = combined_data.index[i].isocalendar()[1]  # Get week number
-
-        # Detect new week (including first entry)
-        if i == 0 or current_week != last_week:
-            new_contributions += weekly_investment  # Add weekly investment
-            for ticker in tickers:
-                portfolio_stock_return[ticker] += weekly_investment * allocation[tickers.index(ticker)]
-            last_week = current_week  # Update last processed week
-
-        # Apply daily returns
-        for ticker in tickers:
-            if i > 0:
-                portfolio_stock_return[ticker] *= (1 + combined_data[f"{ticker} Daily Return"].iloc[i])
-
-        # Rebalancing logic
-        if i % rebalance == 0 and i > 0:
-            total_portfolio_value = sum(portfolio_stock_return.values())
-            for ticker in tickers:
-                target_value = total_portfolio_value * allocation[tickers.index(ticker)]
-                portfolio_stock_return[ticker] = target_value
-
-        # Track portfolio values
-        total_portfolio_value = sum(portfolio_stock_return.values())
-        portfolio_value.append(total_portfolio_value)
-        total_contributions.append(new_contributions)
-
-        for ticker in tickers:
-            portfolio_stock_value[ticker].append(portfolio_stock_return[ticker])
-
-    # Store values in DataFrame
-    for ticker in tickers:
-        combined_data[f"{ticker} Portfolio Value"] = portfolio_stock_value[ticker]
-
-    combined_data["Profile Portfolio Value"] = portfolio_value
-    combined_data["Contributions"] = total_contributions
+    #                            (all tickers,        all allocation)  
+    for ticker, allocation in zip(profile_results[0], profile_results[1]):
+        
+        daily_value = initial_investment * allocation
+        daily_returns = combined_data[f"{ticker} Daily Return"].fillna(0)
+        
+        # Make sure the column exists (create if not)
+        if f"{ticker} Portfolio Value" not in combined_data.columns:
+            combined_data[f"{ticker} Portfolio Value"] = 0.0  # initialize with zeros
+        
+        for i in range(len(daily_returns)):
+            r = daily_returns.iloc[i]
+            daily_value = (daily_value + (daily_investment * allocation)) * (1 + r)
+            combined_data.at[combined_data.index[i], f"{ticker} Portfolio Value"] = daily_value
+            combined_data.at[combined_data.index[i], "Contributions"] = daily_investment
 
     return combined_data
 
+def profile_portfolio_calc(combined_data):
+    pass
 
 
 

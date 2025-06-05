@@ -1,6 +1,6 @@
 import pandas as pd
 
-from calculations import retrieve_stock_data, simulate_holdings_return, max_drawdown_calc
+from calculations import retrieve_stock_data, simulate_holdings_return, max_drawdown_calc, profile_portfolio_calc
 from input import profile_input
 from output import save_to_csv, plot_results
 
@@ -8,11 +8,10 @@ from output import save_to_csv, plot_results
 # Specify the time range
 start_date = "2000-01-01"
 end_date = "2020-03-31"
-weekly_investment = 100
-initial_investment = 0
+daily_investment = 25
+initial_investment = 100
 rebalance = 30
 profile_ammounts = input("How many Profiles would you like to create? [ 5 Max ]: ")
-
 
 try:
     val = int(profile_ammounts)  # Convert input to integer
@@ -42,19 +41,17 @@ for i in range(val):
         print("No valid stock data retrieved. Exiting...")
         exit()
 
-
     combined_data.append(stock_calc_data)
 
 for i in range(val):
     combined_data[i] = (combined_data[i][combined_data[i].index >= real_start_date])
         # Functions
     combined_data[i] = simulate_holdings_return(combined_data=combined_data[i], 
-                                            tickers=profile_results[i][0], 
-                                            initial_investment = initial_investment, 
-                                            weekly_investment=weekly_investment, 
-                                            allocation=profile_results[i][1], 
-                                            rebalance=rebalance)
+                                            profile_results=profile_results[i], 
+                                            initial_investment=initial_investment, 
+                                            daily_investment=daily_investment)
                                             
+    combined_data[i] = profile_portfolio_calc(combined_data=combined_data[i])    
     combined_data[i] = max_drawdown_calc(combined_data=combined_data[i])
 
     save_to_csv(combined_data[i], i)
