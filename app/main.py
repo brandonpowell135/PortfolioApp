@@ -1,6 +1,6 @@
 import pandas as pd
 
-from calculations import retrieve_stock_data, simulate_holdings_return, max_drawdown_calc, profile_portfolio_calc
+from calculations import retrieve_stock_data, simulate_holdings_return, max_drawdown_calc
 from input import profile_input
 from output import save_to_csv, plot_results
 
@@ -45,14 +45,16 @@ for i in range(val):
 
 for i in range(val):
     combined_data[i] = (combined_data[i][combined_data[i].index >= real_start_date])
+    combined_data[i].to_csv(f"TEST_Portfolio_{i}.csv")
+
         # Functions
     combined_data[i] = simulate_holdings_return(combined_data=combined_data[i], 
                                             profile_results=profile_results[i], 
                                             initial_investment=initial_investment, 
                                             daily_investment=daily_investment)
                                             
-    combined_data[i] = profile_portfolio_calc(combined_data=combined_data[i])    
-    combined_data[i] = max_drawdown_calc(combined_data=combined_data[i])
+    combined_data[i], total_contributions, max_drawdown, max_drawdown_duration = max_drawdown_calc(combined_data=combined_data[i], 
+                                                                                                   initial_investment=initial_investment)
 
     save_to_csv(combined_data[i], i)
 
@@ -60,11 +62,8 @@ for i in range(val):
     profile_values.append(combined_data[i])
 
     # Data for table
-    max_drawdown = (combined_data[i]["Max Drawdown"].max() * 100)
-    max_drawdown_duration = (combined_data[i]["Down Days"].max())
-    total_return = (combined_data[i]["Profile Portfolio Return"].iloc[-1] / combined_data[i]["Contributions"].iloc[-1]) *100
+    total_return = (combined_data[i]["Profile Portfolio Return"].iloc[-1] / combined_data[i]["Contributions"].sum()) *100
     end_value = (combined_data[i]["Profile Portfolio Value"].iloc[-1])
-    total_contributions = (combined_data[i]["Contributions"].iloc[-1])
 
     portfolio_stats.append([
         f"Portfolio {i+1}", 
